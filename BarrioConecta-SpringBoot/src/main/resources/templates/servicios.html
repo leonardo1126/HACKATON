@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Servicios y productos')}"></head>
+<body>
+<div th:replace="~{fragments :: navbar}"></div><div th:replace="~{fragments :: sos-bubble}"></div>
+<main class="container py-4 catalog-page">
+ <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+ <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+ <div class="page-heading">
+  <div><span class="eyebrow"><i class="bi bi-geo-alt-fill me-1"></i>Talento local, muy cerca</span><h1 class="section-title">Servicios y productos</h1><p class="muted mb-0">Oficios y productos del barrio, con el Visto Bueno de tus vecinos.</p></div>
+  <a th:href="@{/servicios/nuevo}" class="btn btn-bc align-self-md-center"><i class="bi bi-plus-lg me-1"></i>Publicar</a>
+ </div>
+ <form th:action="@{/servicios}" method="get" class="search-box d-flex gap-2 mb-3">
+  <input type="hidden" name="tipo" th:value="${tipo}"><input type="hidden" name="categoria" th:value="${categoria}">
+  <i class="bi bi-search text-secondary align-self-center ms-2"></i><input class="form-control border-0 shadow-none" name="q" th:value="${q}" placeholder="Busca un oficio, servicio o producto…" aria-label="Buscar"><button class="btn btn-bc px-4">Buscar</button>
+ </form>
+ <div class="chip-row mb-3">
+  <a class="chip" th:classappend="${categoria == ''} ? ' active'" th:href="@{/servicios(tipo=${tipo})}">Todos</a>
+  <a class="chip" th:each="c : ${catServicio}" th:classappend="${categoria == c} ? ' active'" th:href="@{/servicios(categoria=${c},tipo=${tipo})}" th:text="${c}"></a>
+ </div>
+ <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div class="filter-pills">
+   <a class="btn btn-sm btn-outline-success" th:classappend="${tipo == ''} ? ' active'" th:href="@{/servicios(categoria=${categoria})}"><i class="bi bi-grid me-1"></i>Todos</a>
+   <a class="btn btn-sm btn-outline-success" th:classappend="${tipo == 'servicio'} ? ' active'" th:href="@{/servicios(tipo='servicio',categoria=${categoria})}"><i class="bi bi-tools me-1"></i>Servicios</a>
+   <a class="btn btn-sm btn-outline-success" th:classappend="${tipo == 'producto'} ? ' active'" th:href="@{/servicios(tipo='producto',categoria=${categoria})}"><i class="bi bi-basket me-1"></i>Productos</a>
+  </div>
+  <div class="d-flex gap-2">
+   <a class="btn btn-sm btn-outline-success" th:classappend="${orden == 'recomendados'} ? ' active'" th:href="@{/servicios(orden='recomendados',tipo=${tipo},categoria=${categoria},q=${q})}"><i class="bi bi-hand-thumbs-up me-1"></i>Más recomendados</a>
+   <button type="button" class="btn btn-sm btn-outline-success" data-distance-sort><i class="bi bi-sort-down me-1"></i>Más cerca</button>
+  </div>
+ </div>
+ <div class="distance-help small text-secondary mb-3" id="distance-status"><i class="bi bi-info-circle me-1"></i>Activa tu ubicación para ver cuántos kilómetros te separan de cada publicación.</div>
+ <div class="service-list" data-geo-list>
+  <th:block th:each="s : ${servicios}"><article th:replace="~{servicio-card :: card(${s}, ${usuarioIdActual})}"></article></th:block>
+ </div>
+ <div class="empty-state" th:if="${#lists.isEmpty(servicios)}">No encontramos publicaciones con esos filtros. Prueba con otra búsqueda o publica tú el primero.</div>
+</main>
+<div th:replace="~{fragments :: footer}"></div><div th:replace="~{layout :: scripts}"></div>
+<script th:src="@{/js/distancia.js}"></script>
+</body></html>

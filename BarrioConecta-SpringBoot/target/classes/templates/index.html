@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"><head th:replace="~{layout :: head('Inicio')}"></head><body>
+<div th:replace="~{fragments :: navbar}"></div><div th:replace="~{fragments :: sos-bubble}"></div>
+<main class="container py-4 py-lg-5 home-page">
+ <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+ <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+ <section class="hero home-hero mb-4">
+  <div class="hero-kicker"><i class="bi bi-stars me-1"></i> Una comunidad que se ayuda</div>
+  <h1 class="display-5 fw-bold mb-2">Tu barrio, más cerca y más unido</h1>
+  <p class="lead mb-4">Encuentra servicios recomendados por tus vecinos, intercambia ayuda sin dinero y coordina apoyo cuando más se necesita.</p>
+  <form class="search-box home-search d-flex gap-2" th:action="@{/servicios}" method="get"><i class="bi bi-search text-secondary align-self-center ms-2"></i><input class="form-control border-0 shadow-none" name="q" placeholder="Busca gasfitero, clases, electricista…" aria-label="Buscar servicios"><button class="btn btn-bc px-4">Buscar <i class="bi bi-arrow-right ms-1"></i></button></form>
+  <div class="hero-chips mt-3">
+   <a class="chip" th:each="c : ${catServicio}" th:if="${c != 'Otro'}" th:href="@{/servicios(categoria=${c})}" th:text="${c}"></a>
+  </div>
+ </section>
+
+ <section class="stats-strip mb-4" aria-label="Actividad del barrio">
+  <div class="stat"><strong th:text="${totalServicios}">0</strong><span>servicios y productos</span></div>
+  <div class="stat"><strong th:text="${totalFavores}">0</strong><span>favores activos</span></div>
+  <div class="stat"><strong th:text="${totalAlertas}">0</strong><span>solicitudes de ayuda abiertas</span></div>
+  <div class="stat ok"><strong th:text="${totalResueltos}">0</strong><span>ayudas resueltas</span></div>
+ </section>
+
+ <div class="row g-3 mb-4 home-shortcuts">
+  <div class="col-6 col-lg-3"><a class="feature-card shortcut-card" th:href="@{/servicios}"><div class="feature-icon"><i class="bi bi-tools"></i></div><h3>Servicios cercanos</h3><p class="small muted mb-0">Con Visto Bueno Vecinal</p></a></div>
+  <div class="col-6 col-lg-3"><a class="feature-card shortcut-card purple" th:href="@{/favores}"><div class="feature-icon purple"><i class="bi bi-heart-fill"></i></div><h3>Cadena de favores</h3><p class="small muted mb-0">Sin dinero, entre vecinos</p></a></div>
+  <div class="col-6 col-lg-3"><a class="feature-card shortcut-card yellow" th:href="@{/servicios(tipo='producto')}"><div class="feature-icon yellow"><i class="bi bi-basket-fill"></i></div><h3>Productos locales</h3><p class="small muted mb-0">Compra en tu zona</p></a></div>
+  <div class="col-6 col-lg-3"><a class="feature-card shortcut-card red" th:href="@{/emergencias}"><div class="feature-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div><h3>Centro de ayuda</h3><p class="small muted mb-0">Emergencias y recursos</p></a></div>
+ </div>
+
+ <section class="row g-3 mb-4">
+  <div class="col-md-6"><a class="cta-help need" th:href="@{/favores/nuevo(tipo='solicito')}"><i class="bi bi-hand-index-thumb-fill"></i><div><strong>Necesito ayuda</strong><span>Pide una herramienta, transporte, alimentos o apoyo temporal.</span></div><i class="bi bi-arrow-right-circle-fill go"></i></a></div>
+  <div class="col-md-6"><a class="cta-help give" th:href="@{/favores/nuevo(tipo='ofrezco')}"><i class="bi bi-gift-fill"></i><div><strong>Quiero ayudar</strong><span>Presta, dona o ofrece tu tiempo y tus habilidades.</span></div><i class="bi bi-arrow-right-circle-fill go"></i></a></div>
+ </section>
+
+ <div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="section-title h4 mb-1">Los más recomendados por vecinos</h2><p class="small muted mb-0">Ordenados por el Visto Bueno Vecinal que han recibido.</p></div><a th:href="@{/servicios}" class="text-success text-decoration-none small fw-bold">Ver todos →</a></div>
+ <div class="distance-help small text-secondary mb-3" id="distance-status"><i class="bi bi-info-circle me-1"></i>Permite la ubicación para ver cuántos kilómetros te separan de cada vecino.</div>
+ <div class="service-list home-service-list" data-geo-list th:if="${!#lists.isEmpty(servicios)}">
+  <th:block th:each="s : ${servicios}"><article th:replace="~{servicio-card :: card(${s}, ${session.usuarioId})}"></article></th:block>
+ </div>
+ <div class="empty-state" th:if="${#lists.isEmpty(servicios)}">Todavía no hay servicios publicados. ¡Sé el primero en compartir uno!</div>
+
+ <div class="emergency-banner mt-5 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"><div><div class="fw-bold text-danger"><i class="bi bi-shield-exclamation me-2"></i>¿Tu comunidad necesita apoyo?</div><div class="small text-secondary">Consulta solicitudes, voluntarios y recursos disponibles. Para emergencias reales llama también al 105, 116 o 106.</div></div><a th:href="@{/emergencias}" class="btn btn-danger">Ir al centro de ayuda</a></div>
+</main><div th:replace="~{fragments :: footer}"></div><div th:replace="~{layout :: scripts}"></div><script th:src="@{/js/distancia.js}"></script></body></html>

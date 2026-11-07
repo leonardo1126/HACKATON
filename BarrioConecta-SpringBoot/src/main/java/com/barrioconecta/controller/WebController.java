@@ -39,7 +39,13 @@ public class WebController {
     // ---------- Inicio ----------
 
     @GetMapping("/")
-    public String inicio(Model model, HttpSession session) {
+    public String inicio(@RequestParam(required = false) String modo, Model model, HttpSession session) {
+        if ("emergencia".equalsIgnoreCase(modo)) {
+            session.setAttribute("modoEmergencia", true);
+        } else if ("normal".equalsIgnoreCase(modo)) {
+            session.setAttribute("modoEmergencia", false);
+        }
+
         Usuario u = sesion.actual(session);
         List<PublicacionServicio> todos = servicios.findByOcultoFalseOrderByCreadoEnDesc();
         reputacion.completar(todos, u);
@@ -49,6 +55,18 @@ public class WebController {
                 .thenComparing(Comparator.comparingDouble((PublicacionServicio s) -> s.getPromedioCalificacion()).reversed()))
             .limit(3).toList();
         List<ReporteEmergencia> activas = emergencias.findByOcultoFalseAndEstadoNotOrderByCreadoEnDesc(Catalogos.ESTADO_RESUELTA);
+        ayuda.cargarEmergencias(activas);
+
+        boolean alertaSos = activas.stream().anyMatch(ReporteEmergencia::isSos);
+        Boolean modoEmergencia = (Boolean) session.getAttribute("modoEmergencia");
+        if (modoEmergencia == null) {
+            modoEmergencia = alertaSos;
+        }
+
+        model.addAttribute("modoEmergencia", modoEmergencia);
+        model.addAttribute("alertaSos", alertaSos);
+        model.addAttribute("emergenciasActivas", activas.stream().limit(6).toList());
+        model.addAttribute("recursosCriticos", gruposApoyo.findByActivoTrueAndOcultoFalseOrderByVerificadoDescCreadoEnDesc().stream().limit(4).toList());
         model.addAttribute("servicios", destacados);
         model.addAttribute("totalServicios", todos.size());
         model.addAttribute("totalFavores", favores.findByOcultoFalseAndActivoTrueOrderByCreadoEnDesc().size());
@@ -56,6 +74,13 @@ public class WebController {
         model.addAttribute("totalResueltos", favores.countByActivoFalseAndOcultoFalse()
             + emergencias.findByOcultoFalseAndEstadoOrderByActualizadoEnDesc(Catalogos.ESTADO_RESUELTA).size());
         return "index";
+    }
+
+    @GetMapping("/modo/toggle")
+    public String toggleModo(@RequestParam(required = false, defaultValue = "/") String redirect, HttpSession session) {
+        Boolean modo = (Boolean) session.getAttribute("modoEmergencia");
+        session.setAttribute("modoEmergencia", modo == null ? Boolean.TRUE : !modo);
+        return "redirect:" + (redirect.startsWith("/") ? redirect : "/");
     }
 
     @GetMapping("/offline")
@@ -217,26 +242,39 @@ public class WebController {
 
     @PostMapping("/api/sos")
     @ResponseBody
-    public Map<String, Object> enviarSos(@RequestParam Double latitud, @RequestParam Double longitud, HttpSession session) {
+    public Map<String, Object> enviarSos(
+            @RequestParam Double latitud, 
+            @RequestParam Double longitud,
+            @RequestParam(required = false, defaultValue = "SOS") String categoria,
+            @RequestParam(required = false) String detalle,
+            HttpSession session) {
         Usuario u = sesion.actual(session);
         if (u == null) return Map.of("ok", false, "mensaje", "Inicia sesión para enviar una alerta SOS.");
         if (latitud < -90 || latitud > 90 || longitud < -180 || longitud > 180)
             return Map.of("ok", false, "mensaje", "La ubicación no es válida.");
-        ReporteEmergencia e = new ReporteEmergencia(); e.setUsuario(u); e.setCategoria("SOS");
-        e.setTitulo("ALERTA SOS"); e.setDescripcion("Una persona solicita ayuda urgente. Contacta con ella y verifica la situación.");
-        e.setLatitud(latitud); e.setLongitud(longitud); e.setEstado(Catalogos.ESTADO_PENDIENTE); emergencias.save(e);
-        ayuda.registrar(AyudaService.EMERGENCIA, e.getId(), "Alerta SOS enviada por " + u.getNombreCorto());
+        ReporteEmergencia e = new ReporteEmergencia(); 
+        e.setUsuario(u);
+        String cat = (categoria != null && !categoria.isBlank()) ? categoria.trim() : "SOS";
+        e.setCategoria(cat);
+        e.setTitulo("ALERTA SOS: " + cat);
+        e.setDescripcion(detalle != null && !detalle.isBlank() ? detalle.trim() : "Solicitud urgente de ayuda. Vecinos coordinando asistencia inmediata.");
+        e.setLatitud(latitud); 
+        e.setLongitud(longitud); 
+        e.setEstado(Catalogos.ESTADO_PENDIENTE); 
+        emergencias.save(e);
+        session.setAttribute("modoEmergencia", true);
+        ayuda.registrar(AyudaService.EMERGENCIA, e.getId(), "Alerta SOS (" + cat + ") enviada por " + u.getNombreCorto());
         // Avisa a vecinos que registraron su ubicación a menos de 5 km (máximo 50 avisos).
         int avisados = 0;
         for (Usuario v : usuarios.findAll()) {
             if (avisados >= 50) break;
             if (v.getId().equals(u.getId()) || v.getLatitud() == null || v.getLongitud() == null) continue;
             if (dentroRadio(latitud, longitud, v.getLatitud(), v.getLongitud(), 5)) {
-                notificaciones.notificar(v, "🚨 " + u.getNombreCorto() + " envió una alerta SOS cerca de ti. Si puedes, ofrece ayuda y avisa también a los servicios oficiales.", AyudaService.enlaceEmergencia(e));
+                notificaciones.notificar(v, "🚨 " + u.getNombreCorto() + " activó SOS por " + cat + " cerca de ti. Ingresa para coordinar soporte.", AyudaService.enlaceEmergencia(e));
                 avisados++;
             }
         }
-        return Map.of("ok", true, "id", e.getId(), "mensaje", "Alerta SOS publicada en el mapa.");
+        return Map.of("ok", true, "id", e.getId(), "mensaje", "Alerta SOS activada con éxito en el mapa vecinal.");
     }
 
     // ---------- Mapa ----------

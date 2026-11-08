@@ -22,10 +22,8 @@ public final class Catalogos {
         "Intercambio de habilidades", "Cuidado de personas o mascotas", "Otro");
 
     public static final List<String> CATEGORIAS_EMERGENCIA = List.of(
-        "Adulto mayor o persona vulnerable", "Atención médica y primeros auxilios", 
-        "Alimentos y agua potable", "Refugio y albergue temporal", 
-        "Sin electricidad / Paciente dependiente", "Transporte solidario y rescate", 
-        "Otro apoyo urgente");
+        "Alimentos y agua", "Atención y primeros auxilios", "Refugio", "Transporte solidario",
+        "Persona vulnerable", "Otro");
 
     public static final List<String> DISPONIBILIDAD = List.of(
         "Hoy", "Esta semana", "Mañanas", "Tardes", "Noches", "Fines de semana", "Flexible");

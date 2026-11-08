@@ -12,122 +12,43 @@ window.bcToast = function (mensaje, tipo) {
  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, 5200);
 };
 
-/* ---------- SOS inteligente con vulnerabilidades (funciona online y offline) ---------- */
+/* ---------- SOS flotante (funciona también sin conexión: se guarda y se envía al reconectar) ---------- */
 document.addEventListener('DOMContentLoaded', () => {
- const sosBtn = document.getElementById('global-sos-button');
- const triggerBtn = document.getElementById('btn-trigger-sos-confirmed');
+ const btn = document.getElementById('global-sos-button'); if (!btn) return;
  const status = document.getElementById('global-sos-status');
- const feedback = document.getElementById('sos-modal-feedback');
- const chipContainer = document.getElementById('sos-category-chips');
- const detailInput = document.getElementById('sos-detail-input');
-
- let categoriaSeleccionada = 'Adulto mayor o persona vulnerable';
-
- if (chipContainer) {
-  chipContainer.querySelectorAll('.sos-chip-btn').forEach(b => {
-   b.addEventListener('click', () => {
-    chipContainer.querySelectorAll('.sos-chip-btn').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
-    categoriaSeleccionada = b.dataset.cat || 'SOS';
-   });
-  });
- }
-
  const setStatus = t => { if (status) status.textContent = t; };
- const setFeedback = (msg, isError) => {
-  if (feedback) {
-   feedback.textContent = msg;
-   feedback.className = 'small text-center mt-2 ' + (isError ? 'text-danger fw-bold' : 'text-success fw-bold');
-  }
+ const mostrarNumeros = () => {
+  alert('Si hay peligro inmediato, llama ahora:\n\n105 Policía\n116 Bomberos\n106 Ambulancia (SAMU)\n115 Defensa Civil\n\nBarrio Conecta avisa a tus vecinos, pero no a las autoridades.');
  };
-
- if (triggerBtn && sosBtn) {
-  triggerBtn.addEventListener('click', () => {
-   if (sosBtn.dataset.logged !== 'true') {
-    if (confirm('Para enviar una alerta comunitaria necesitas una cuenta. ¿Deseas ir a Iniciar sesión?')) {
-     window.location.href = sosBtn.dataset.loginUrl;
-    }
-    return;
-   }
-
-   const detalle = detailInput ? detailInput.value.trim() : '';
-
-   if (!navigator.geolocation) {
-    setFeedback('Tu navegador no admite geolocalización.', true);
-    return;
-   }
-
-   triggerBtn.disabled = true;
-   triggerBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Obteniendo ubicación GPS…';
-   setStatus('Localizando…');
-
-   navigator.geolocation.getCurrentPosition(async pos => {
-    const datos = {
-     latitud: pos.coords.latitude,
-     longitud: pos.coords.longitude,
-     categoria: categoriaSeleccionada,
-     detalle: detalle
-    };
-    const body = new URLSearchParams(datos).toString();
-
-    const guardarOffline = () => {
-     if (window.BC && window.BC.encolar) {
-      window.BC.encolar(sosBtn.dataset.sosUrl, body, 'tu alerta SOS (' + categoriaSeleccionada + ')');
-     }
-     setStatus('SOS guardado local');
-     setFeedback('Guardado sin conexión. Se transmitirá en cuanto vuelva la señal.', false);
-     window.bcToast('⚠️ Alerta SOS guardada sin conexión. Se enviará al reconectar.', 'warn');
-     setTimeout(() => {
-      const modalEl = document.getElementById('sosModal');
-      if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
-     }, 1800);
-    };
-
-    try {
-     if (!navigator.onLine) {
-      guardarOffline();
-      return;
-     }
-
-     const response = await fetch(sosBtn.dataset.sosUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-      credentials: 'same-origin'
-     });
-
-     const data = await response.json();
-     if (!response.ok || !data.ok) throw new Error(data.mensaje || 'Error al enviar alerta SOS');
-
-     setStatus('SOS transmitido');
-     setFeedback('¡Alerta enviada a tus vecinos cercanos!', false);
-     window.bcToast('🚨 ' + data.mensaje + ' Verifica también llamar al 105, 116 o 106.', 'danger');
-
-     setTimeout(() => {
-      const modalEl = document.getElementById('sosModal');
-      if (modalEl && window.bootstrap) bootstrap.Modal.getInstance(modalEl)?.hide();
-      window.location.href = '/?modo=emergencia';
-     }, 1200);
-
-    } catch (err) {
-     if (err instanceof TypeError) {
-      guardarOffline();
-     } else {
-      setFeedback(err.message || 'Error al conectar con el servidor.', true);
-     }
-    } finally {
-     triggerBtn.disabled = false;
-     triggerBtn.innerHTML = '<i class="bi bi-broadcast me-2"></i>ENVIAR SOS A MIS VECINOS';
-     setTimeout(() => setStatus('Auxilio 1-clic'), 5000);
-    }
-   }, () => {
-    triggerBtn.disabled = false;
-    triggerBtn.innerHTML = '<i class="bi bi-broadcast me-2"></i>ENVIAR SOS A MIS VECINOS';
-    setStatus('Sin GPS');
-    setFeedback('No se pudo acceder a tu ubicación. Concede permiso de GPS en tu navegador.', true);
-   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-  });
- }
+ btn.addEventListener('click', () => {
+  if (btn.dataset.logged !== 'true') {
+   if (confirm('Para enviar una alerta SOS necesitas una cuenta e iniciar sesión. ¿Quieres ir a Ingresar?')) window.location.href = btn.dataset.loginUrl;
+   return;
+  }
+  if (!confirm('¿ESTÁS SEGURO DE QUE QUIERES ENVIAR UNA ALERTA SOS?\n\nSe compartirá tu ubicación actual con tus vecinos. Úsala solo ante una emergencia real.\n\nEsto NO llama a la policía, bomberos ni ambulancia.')) return;
+  if (!navigator.geolocation) { alert('Tu navegador no permite obtener la ubicación.'); return; }
+  btn.disabled = true; setStatus('Obteniendo ubicación…');
+  navigator.geolocation.getCurrentPosition(async pos => {
+   const datos = { latitud: pos.coords.latitude, longitud: pos.coords.longitude };
+   const body = new URLSearchParams(datos).toString();
+   const guardarParaDespues = () => {
+    if (window.BC.encolar) window.BC.encolar(btn.dataset.sosUrl, body, 'tu alerta SOS');
+    setStatus('SOS guardado'); mostrarNumeros();
+   };
+   try {
+    if (!navigator.onLine) { guardarParaDespues(); return; }
+    const response = await fetch(btn.dataset.sosUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body, credentials: 'same-origin' });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.mensaje || 'No se pudo enviar el SOS.');
+    setStatus('SOS enviado');
+    window.bcToast('🚨 ' + data.mensaje + ' Llama también al 105, 116 o 106.', 'danger');
+   } catch (err) {
+    if (err instanceof TypeError) guardarParaDespues(); // sin red
+    else { setStatus('No se pudo enviar'); alert(err.message || 'Ocurrió un error al enviar el SOS.'); }
+   } finally { btn.disabled = false; setTimeout(() => setStatus('Emergencia'), 5000); }
+  }, () => { btn.disabled = false; setStatus('Ubicación no disponible'); alert('No se pudo obtener tu ubicación. Activa el permiso de ubicación e inténtalo nuevamente.'); },
+  { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+ });
 });
 
 /* ---------- Confirmaciones para acciones importantes ---------- */
